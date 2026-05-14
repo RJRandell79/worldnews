@@ -149,6 +149,13 @@
     }
     #headlines .hl-flags { font-style: normal; letter-spacing: 1px; opacity: 0.75; }
 
+    @keyframes flash-change {
+        0%   { stroke: #ff9944; stroke-width: 2.5px; }
+        100% { stroke: #2e2e52; stroke-width: 0.4px; }
+    }
+    .country.flash {
+        animation: flash-change 1.8s ease-out forwards;
+    }
     .country.selected { stroke: #fff !important; stroke-width: 1.5px !important; }
 
     #headlines-header {
@@ -435,6 +442,21 @@
       drawLegend(maxVal);
     }
 
+    function flashChangedCountries(prev, next) {
+        if (!countryPaths || !Object.keys(prev).length) return; // skip first-ever update
+        countryPaths.each(function(d) {
+            const iso2 = numericToAlpha2[String(d.id)];
+            if (!iso2) return;
+            if ((prev[iso2] || 0) !== (next[iso2] || 0)) {
+                const el = this;
+                el.classList.remove('flash');
+                void el.offsetWidth; // force reflow to restart animation if already running
+                el.classList.add('flash');
+                el.addEventListener('animationend', () => el.classList.remove('flash'), { once: true });
+            }
+        });
+    }
+
     function drawLegend(maxVal) {
       const canvas = document.getElementById('legend-bar');
       const ctx    = canvas.getContext('2d');
@@ -536,6 +558,8 @@
       statusEl.className = '';
     });
     socket.on('newsUpdate', ({ mentions, headlines, countryHeadlines, countrySources, lastUpdated }) => {
+        const prevMentions = { ...currentMentions };
+
         currentMentions         = mentions         || {};
         currentCountryHeadlines = countryHeadlines || {};
         currentCountrySources   = countrySources   || {};
@@ -543,6 +567,7 @@
 
         applyMentions(currentMentions);
         updateTopCountries(currentMentions);
+        flashChangedCountries(prevMentions, currentMentions);
 
         // Re-apply filter if one is active, otherwise show all
         if (selectedCountry) selectCountry(selectedCountry);
