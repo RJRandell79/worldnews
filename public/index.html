@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NewsLocator — World News Heatmap</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0f0f1a;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      background: #16162a;
+      border-bottom: 1px solid #2a2a4a;
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 1.3rem; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
+    header h1 span { color: #ff6b35; }
+
+    #status { font-size: 0.8rem; color: #555; }
+    #status.live { color: #4caf50; }
+    #status.live::before { content: '● '; animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    main { display: flex; flex: 1; overflow: hidden; }
+
+    /* Map */
+    #map-container {
+      flex: 1;
+      position: relative;
+      background: #080818;
+      overflow: hidden;
+    }
+    #map-container svg { width: 100%; height: 100%; }
+
+    .country {
+      stroke: #1e1e3a;
+      stroke-width: 0.4px;
+      transition: fill 0.7s ease;
+      cursor: pointer;
+    }
+    .country:hover { stroke: #ffffff88; stroke-width: 1px; }
+
+    #tooltip {
+      display: none;
+      position: fixed;
+      background: rgba(20, 20, 40, 0.96);
+      border: 1px solid #3a3a6a;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #tooltip strong { display: block; font-size: 0.95rem; margin-bottom: 2px; }
+    #tooltip .cnt { color: #ff6b35; }
+
+    #legend {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      background: rgba(20, 20, 40, 0.88);
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.72rem;
+    }
+    #legend p { text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 6px; }
+    #legend-bar { width: 140px; height: 8px; border-radius: 4px; display: block; }
+    #legend-labels { display: flex; justify-content: space-between; color: #666; margin-top: 4px; }
+
+    /* Sidebar */
+    aside {
+      width: 270px;
+      background: #13132a;
+      border-left: 1px solid #2a2a4a;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .sh { /* section header */
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #555;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #1e1e38;
+      flex-shrink: 0;
+    }
+
+    #top-countries {
+      list-style: none;
+      padding: 6px 0;
+      border-bottom: 1px solid #2a2a4a;
+      flex-shrink: 0;
+    }
+    #top-countries li {
+      display: flex;
+      align-items: center;
+      padding: 5px 16px;
+      font-size: 0.82rem;
+      gap: 8px;
+    }
+    #top-countries .rank { color: #444; width: 16px; font-size: 0.7rem; flex-shrink: 0; }
+    #top-countries .cname { flex: 1; }
+    #top-countries .bar-wrap { width: 50px; background: #1e1e38; border-radius: 2px; height: 4px; }
+    #top-countries .bar-fill { height: 4px; background: #ff6b35; border-radius: 2px; transition: width .5s; }
+    #top-countries .cnt { color: #ff6b35; font-weight: 700; width: 24px; text-align: right; font-size: 0.8rem; }
+
+    #headlines-wrap { flex: 1; overflow-y: auto; }
+    #headlines-wrap::-webkit-scrollbar { width: 4px; }
+    #headlines-wrap::-webkit-scrollbar-track { background: #13132a; }
+    #headlines-wrap::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 4px; }
+
+    #headlines { list-style: none; padding: 6px 0; }
+    #headlines li { border-bottom: 1px solid #1a1a32; }
+    #headlines li:last-child { border-bottom: none; }
+    #headlines a {
+      display: block;
+      padding: 8px 16px;
+      color: #b0b0c8;
+      text-decoration: none;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+    #headlines a:hover { color: #fff; background: #1a1a30; }
+    #headlines .src {
+      display: block;
+      color: #ff6b35;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    @media (max-width: 768px) {
+      main { flex-direction: column; }
+      aside { width: 100%; height: 280px; border-left: none; border-top: 1px solid #2a2a4a; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>News<span>Locator</span></h1>
+    <span id="status">Connecting…</span>
+  </header>
+  <main>
+    <div id="map-container">
+      <div id="map"></div>
+      <div id="tooltip"><strong></strong><span class="cnt"></span></div>
+      <div id="legend">
+        <p>Mentions</p>
+        <canvas id="legend-bar" width="140" height="8"></canvas>
+        <div id="legend-labels"><span>0</span><span id="legend-max">—</span></div>
+      </div>
+    </div>
+    <aside>
+      <div class="sh">Top Countries</div>
+      <ol id="top-countries"></ol>
+      <div class="sh">Latest Headlines</div>
+      <div id="headlines-wrap">
+        <ul id="headlines"><li style="padding:16px;color:#444;font-size:.8rem">Waiting for data…</li></ul>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+  <script>
+    'use strict';
+
+    // XSS helpers
+    function esc(str) {
+      const d = document.createElement('div');
+      d.textContent = String(str ?? '');
+      return d.innerHTML;
+    }
+    function safeUrl(url) {
+      try {
+        const u = new URL(url);
+        return ['http:', 'https:'].includes(u.protocol) ? url : '#';
+      } catch { return '#'; }
+    }
+
+    let countryNames = {};
+    let numericToAlpha2 = {};
+    let countryPaths = null;
+    let currentMentions = {};
+
+    const tooltip   = document.getElementById('tooltip');
+    const statusEl  = document.getElementById('status');
+    const mapDiv    = document.getElementById('map-container');
+
+    // — D3 map setup —
+    const W = mapDiv.clientWidth;
+    const H = mapDiv.clientHeight;
+
+    const svg = d3.select('#map')
+      .append('svg')
+      .attr('viewBox', `0 0 ${W} ${H}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet')
+      .style('width', '100%')
+      .style('height', '100%');
+
+    const projection = d3.geoNaturalEarth1()
+      .scale(W / 6.3)
+      .translate([W / 2, H / 2]);
+
+    const pathGen = d3.geoPath().projection(projection);
+
+    // Graticule grid
+    svg.append('path')
+      .datum(d3.geoGraticule()())
+      .attr('fill', 'none')
+      .attr('stroke', '#191928')
+      .attr('stroke-width', 0.4)
+      .attr('d', pathGen);
+
+    const colorScale = d3.scaleSequentialLog()
+      .interpolator(d3.interpolateYlOrRd);
+
+    // Load world topology + country metadata in parallel
+    Promise.all([
+      d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'),
+      fetch('/api/countries').then(r => r.json()),
+    ]).then(([world, cData]) => {
+      numericToAlpha2 = cData.numericToAlpha2;
+      countryNames    = cData.countryNames;
+
+      const features = topojson.feature(world, world.objects.countries).features;
+
+      countryPaths = svg.selectAll('.country')
+        .data(features)
+        .join('path')
+        .attr('class', 'country')
+        .attr('d', pathGen)
+        .attr('fill', '#252535')
+        .on('mouseover', (event, d) => {
+          const iso2  = numericToAlpha2[String(d.id)];
+          const name  = iso2 && countryNames[iso2];
+          if (!name) return;
+          const count = currentMentions[iso2] || 0;
+          tooltip.querySelector('strong').textContent = name;
+          tooltip.querySelector('.cnt').textContent =
+            count > 0 ? `${count} mention${count !== 1 ? 's' : ''}` : 'No mentions';
+          tooltip.style.display = 'block';
+        })
+        .on('mousemove', (event) => {
+          tooltip.style.left = (event.clientX + 14) + 'px';
+          tooltip.style.top  = (event.clientY - 36) + 'px';
+        })
+        .on('mouseout', () => { tooltip.style.display = 'none'; });
+
+      // Country borders overlay
+      svg.append('path')
+        .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
+        .attr('fill', 'none')
+        .attr('stroke', '#1e1e3a')
+        .attr('stroke-width', 0.4)
+        .attr('d', pathGen);
+
+      if (Object.keys(currentMentions).length) applyMentions(currentMentions);
+    }).catch(err => console.error('Map load error:', err));
+
+    function applyMentions(mentions) {
+      if (!countryPaths) { currentMentions = mentions; return; }
+      const vals = Object.values(mentions).filter(v => v > 0);
+      if (!vals.length) return;
+      const maxVal = Math.max(...vals);
+      colorScale.domain([1, Math.max(2, maxVal)]);
+
+      countryPaths.attr('fill', d => {
+        const iso2  = numericToAlpha2[String(d.id)];
+        const count = (iso2 && mentions[iso2]) || 0;
+        return count > 0 ? colorScale(count) : '#252535';
+      });
+
+      drawLegend(maxVal);
+    }
+
+    function drawLegend(maxVal) {
+      const canvas = document.getElementById('legend-bar');
+      const ctx    = canvas.getContext('2d');
+      for (let i = 0; i < canvas.width; i++) {
+        const t = i / canvas.width;
+        ctx.fillStyle = colorScale(Math.max(1, Math.pow(maxVal, t)));
+        ctx.fillRect(i, 0, 1, canvas.height);
+      }
+      document.getElementById('legend-max').textContent = maxVal;
+    }
+
+    function updateTopCountries(mentions) {
+      const sorted = Object.entries(mentions)
+        .filter(([, v]) => v > 0)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 10);
+      const maxCount = sorted[0]?.[1] || 1;
+      const list = document.getElementById('top-countries');
+      list.innerHTML = sorted.length
+        ? sorted.map(([iso2, count], i) => `
+            <li>
+              <span class="rank">${i + 1}</span>
+              <span class="cname">${esc(countryNames[iso2] || iso2)}</span>
+              <span class="bar-wrap"><span class="bar-fill" style="width:${Math.round(count/maxCount*100)}%"></span></span>
+              <span class="cnt">${count}</span>
+            </li>`).join('')
+        : '<li style="padding:8px 16px;color:#444;font-size:.8rem">No data yet</li>';
+    }
+
+    function updateHeadlines(headlines) {
+      if (!headlines?.length) return;
+      document.getElementById('headlines').innerHTML = headlines.map(h => `
+        <li><a href="${safeUrl(h.url)}" target="_blank" rel="noopener noreferrer">
+          <span class="src">${esc(h.source || 'News')}</span>${esc(h.title)}
+        </a></li>`).join('');
+    }
+
+    // — Socket.io —
+    const socket = io();
+
+    socket.on('connect', () => {
+      statusEl.textContent = 'Live';
+      statusEl.className = 'live';
+    });
+    socket.on('disconnect', () => {
+      statusEl.textContent = 'Disconnected';
+      statusEl.className = '';
+    });
+    socket.on('newsUpdate', ({ mentions, headlines, lastUpdated }) => {
+      currentMentions = mentions || {};
+      applyMentions(currentMentions);
+      updateTopCountries(currentMentions);
+      updateHeadlines(headlines || []);
+      if (lastUpdated) {
+        statusEl.textContent = `Live · ${new Date(lastUpdated).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`;
+        statusEl.className = 'live';
+      }
+    });
+  </script>
+</body>
+</html>
