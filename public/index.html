@@ -253,6 +253,11 @@
         return ['http:', 'https:'].includes(u.protocol) ? url : '#';
       } catch { return '#'; }
     }
+    function flag(iso2) {
+        if (!iso2 || iso2.length !== 2) return '';
+        const u = iso2.toUpperCase();
+        return String.fromCodePoint(u.charCodeAt(0) + 0x1F1A5, u.charCodeAt(1) + 0x1F1A5);
+    }
 
     let countryNames = {};
     let numericToAlpha2 = {};
@@ -344,7 +349,7 @@
           const name  = iso2 && countryNames[iso2];
           if (!name) return;
           const count = currentMentions[iso2] || 0;
-          tooltip.querySelector('strong').textContent = name;
+          tooltip.querySelector('strong').textContent = flag(iso2) + ' ' + name;
           tooltip.querySelector('.cnt').textContent = count > 0 ? `${count} mention${count !== 1 ? 's' : ''}` : 'No mentions';
 
           const sources = currentCountrySources[iso2] || {};
@@ -451,7 +456,7 @@
             ? sorted.map(([iso2, count], i) => `
                 <li>
                 <span class="rank">${i + 1}</span>
-                <span class="cname">${esc(countryNames[iso2] || iso2)}</span>
+                <span class="cname">${flag(iso2)} ${esc(countryNames[iso2] || iso2)}</span>
                 ${sparkline(iso2, maxCount)}
                 <span class="cnt">${count}</span>
                 </li>`).join('')
