@@ -10,20 +10,24 @@ const SECRET     = process.env.INTERNAL_SECRET || 'newslocator-internal';
 const rssParser = new Parser({ timeout: 10000 });
 
 const RSS_FEEDS = [
-  { name: 'BBC World',       url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
-  { name: 'BBC Africa',      url: 'https://feeds.bbci.co.uk/news/world/africa/rss.xml' },
-  { name: 'BBC Asia',        url: 'https://feeds.bbci.co.uk/news/world/asia/rss.xml' },
-  { name: 'BBC Latin Am.',   url: 'https://feeds.bbci.co.uk/news/world/latin_america/rss.xml' },
+  { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+  { name: 'BBC Africa', url: 'https://feeds.bbci.co.uk/news/world/africa/rss.xml' },
+  { name: 'BBC Asia', url: 'https://feeds.bbci.co.uk/news/world/asia/rss.xml' },
+  { name: 'BBC Latin Am.', url: 'https://feeds.bbci.co.uk/news/world/latin_america/rss.xml' },
   { name: 'BBC Middle East', url: 'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml' },
-  { name: 'The Guardian',    url: 'https://www.theguardian.com/world/rss' },
-  { name: 'RFI English',     url: 'https://www.rfi.fr/en/rss' },
-  { name: 'Al Jazeera',      url: 'https://www.aljazeera.com/xml/rss/all.xml' },
-  { name: 'France 24',       url: 'https://www.france24.com/en/rss' },
-  { name: 'DW',              url: 'https://rss.dw.com/rdf/rss-en-all' },
-  { name: 'NPR World',       url: 'https://feeds.npr.org/1004/rss.xml' },
-  { name: 'Sky News',        url: 'https://feeds.skynews.com/feeds/rss/world.xml' },
-  { name: 'ABC News',        url: 'https://abcnews.go.com/abcnews/internationalheadlines' },
-  { name: 'Merco Press',     url: 'https://en.mercopress.com/rss' }
+  { name: 'The Guardian', url: 'https://www.theguardian.com/world/rss' },
+  { name: 'RFI English', url: 'https://www.rfi.fr/en/rss' },
+  { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
+  { name: 'France 24', url: 'https://www.france24.com/en/rss' },
+  { name: 'DW', url: 'https://rss.dw.com/rdf/rss-en-all' },
+  { name: 'NPR World', url: 'https://feeds.npr.org/1004/rss.xml' },
+  { name: 'Sky News', url: 'https://feeds.skynews.com/feeds/rss/world.xml' },
+  { name: 'ABC News', url: 'https://abcnews.go.com/abcnews/internationalheadlines' },
+  { name: 'Merco Press', url: 'https://en.mercopress.com/rss' },
+  { name: 'ABC News Australia', url: 'https://www.abc.net.au/news/feed/51120/rss.xml' },
+  { name: 'CBC World', url: 'https://www.cbc.ca/cmlink/rss-world' },
+  { name: 'Times of India', url: 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms' },
+  { name: 'Xinhua', url: 'http://www.xinhuanet.com/english/rss/worldrss.xml' }
 ];
 
 // Build regex patterns: [{iso2, patterns[]}]
