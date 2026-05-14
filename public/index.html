@@ -46,7 +46,7 @@
     #map-container svg { width: 100%; height: 100%; }
 
     .country {
-      stroke: #1e1e3a;
+      stroke: #2e2e52;
       stroke-width: 0.4px;
       transition: fill 0.7s ease;
       cursor: pointer;
@@ -286,16 +286,36 @@
 
     const pathGen = d3.geoPath().projection(projection);
 
+    const defs = svg.append('defs');
+    const glowFilter = defs.append('filter')
+        .attr('id', 'glow')
+        .attr('x', '-40%').attr('y', '-40%')
+        .attr('width', '180%').attr('height', '180%');
+    glowFilter.append('feGaussianBlur')
+        .attr('stdDeviation', '2.5')
+        .attr('result', 'coloredBlur');
+    const feMerge = glowFilter.append('feMerge');
+    feMerge.append('feMergeNode').attr('in', 'coloredBlur');
+    feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+    // Ocean sphere — fills the Natural Earth boundary with a proper ocean colour
+    svg.append('path')
+      .datum({ type: 'Sphere' })
+      .attr('fill', '#0a1428')
+      .attr('stroke', '#162040')
+      .attr('stroke-width', 0.8)
+      .attr('d', pathGen);
+
     // Graticule grid
     svg.append('path')
       .datum(d3.geoGraticule()())
       .attr('fill', 'none')
       .attr('stroke', '#191928')
       .attr('stroke-width', 0.4)
+      .attr('stroke-dasharray', '2,3')
       .attr('d', pathGen);
 
-    const colorScale = d3.scaleSequentialLog()
-      .interpolator(d3.interpolateYlOrRd);
+    const colorScale = d3.scaleSequentialLog().interpolator(t => d3.interpolateInferno(0.15 + t * 0.85));
 
     // Load world topology + country metadata in parallel
     Promise.all([
@@ -312,7 +332,7 @@
         .join('path')
         .attr('class', 'country')
         .attr('d', pathGen)
-        .attr('fill', '#252535')
+        .attr('fill', d => d.id === 10 ? '#111120' : '#252535')
         .on('mouseover', (event, d) => {
           const iso2  = numericToAlpha2[String(d.id)];
           const name  = iso2 && countryNames[iso2];
@@ -379,10 +399,18 @@
       colorScale.domain([1, Math.max(2, maxVal)]);
 
       countryPaths.attr('fill', d => {
+        if (d.id === 10) return '#111120';
         const iso2  = numericToAlpha2[String(d.id)];
         const count = (iso2 && mentions[iso2]) || 0;
         return count > 0 ? colorScale(count) : '#252535';
       });
+      
+      countryPaths.attr('filter', d => {
+        if (d.id === 10) return null;
+        const iso2  = numericToAlpha2[String(d.id)];
+        const count = (iso2 && mentions[iso2]) || 0;
+        return count >= maxVal * 0.5 ? 'url(#glow)' : null;
+    });
 
       drawLegend(maxVal);
     }
