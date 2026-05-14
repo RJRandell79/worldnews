@@ -4,6 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const countries = require('./data/countries.json');
+const db = require('./db/index');
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -20,8 +21,10 @@ for (const c of countries) {
   countryNames[c.iso2] = c.name;
 }
 
-// In-memory state
-const state = { mentions: {}, headlines: [], countryHeadlines: {}, countrySources: {}, lastUpdated: null };
+// Load latest snapshot from DB or start with empty state
+const savedState = db.getLatestSnapshot();
+const state = savedState || { mentions: {}, headlines: [], countryHeadlines: {}, countrySources: {}, lastUpdated: null };
+if (savedState) console.log(`[server] Restored state from DB (${savedState.lastUpdated})`);
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'newslocator-internal';
 
@@ -36,11 +39,13 @@ app.post('/internal/update', (req, res) => {
   state.countryHeadlines = countryHeadlines || {};
   state.countrySources = countrySources || {};
   state.lastUpdated = new Date().toISOString();
+  db.saveSnapshot(state);
   io.emit('newsUpdate', state);
   res.json({ ok: true });
 });
 
 // Public endpoints
+app.get('/api/history', (_req, res) => res.json(db.getMentionHistory()));
 app.get('/api/state', (_req, res) => res.json(state));
 app.get('/api/countries', (_req, res) => res.json({ numericToAlpha2, countryNames }));
 

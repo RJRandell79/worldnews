@@ -3,3 +3,4 @@
 .nvmrc
 .env
 .DS_Store
+/data/newslocator.db
