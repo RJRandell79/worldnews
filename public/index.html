@@ -178,6 +178,23 @@
 
     #clear-filter:hover { color: #fff; border-color: #888; }
 
+    #tooltip .sources {
+        display: block;
+        color: #888;
+        font-size: 0.73rem;
+        margin-top: 5px;
+        line-height: 1.5;
+    }
+
+    #tooltip .sources span {
+        display: inline-block;
+        background: #2a2a4a;
+        border-radius: 3px;
+        padding: 1px 5px;
+        margin: 1px 2px 1px 0;
+        white-space: nowrap;
+    }
+
     @media (max-width: 768px) {
       main { flex-direction: column; }
       aside { width: 100%; height: 280px; border-left: none; border-top: 1px solid #2a2a4a; }
@@ -192,7 +209,11 @@
   <main>
     <div id="map-container">
       <div id="map"></div>
-      <div id="tooltip"><strong></strong><span class="cnt"></span></div>
+      <div id="tooltip">
+        <strong></strong>
+        <span class="cnt"></span>
+        <span class="sources"></span>
+      </div>
       <div id="legend">
         <p>Mentions</p>
         <canvas id="legend-bar" width="140" height="8"></canvas>
@@ -238,6 +259,7 @@
     let selectedCountry = null;
     let currentCountryHeadlines = {};
     let allHeadlines = [];
+    let currentCountrySources = {};
 
     const tooltip        = document.getElementById('tooltip');
     const statusEl       = document.getElementById('status');
@@ -295,8 +317,17 @@
           if (!name) return;
           const count = currentMentions[iso2] || 0;
           tooltip.querySelector('strong').textContent = name;
-          tooltip.querySelector('.cnt').textContent =
-            count > 0 ? `${count} mention${count !== 1 ? 's' : ''}` : 'No mentions';
+          tooltip.querySelector('.cnt').textContent = count > 0 ? `${count} mention${count !== 1 ? 's' : ''}` : 'No mentions';
+
+          const sources = currentCountrySources[iso2] || {};
+          const sourcesEl = tooltip.querySelector('.sources');
+          const breakdown = Object.entries(sources)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 5)
+            .map(([src, n]) => `<span>${esc(src)} ×${n}</span>`)
+            .join('');
+            
+          sourcesEl.innerHTML = breakdown;
           tooltip.style.display = 'block';
         })
         .on('mousemove', (event) => {
@@ -433,9 +464,10 @@
       statusEl.textContent = 'Disconnected';
       statusEl.className = '';
     });
-    socket.on('newsUpdate', ({ mentions, headlines, countryHeadlines, lastUpdated }) => {
+    socket.on('newsUpdate', ({ mentions, headlines, countryHeadlines, countrySources, lastUpdated }) => {
         currentMentions         = mentions         || {};
         currentCountryHeadlines = countryHeadlines || {};
+        currentCountrySources   = countrySources   || {};
         allHeadlines            = headlines        || [];
 
         applyMentions(currentMentions);
