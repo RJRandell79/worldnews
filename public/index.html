@@ -298,8 +298,16 @@
     feMerge.append('feMergeNode').attr('in', 'coloredBlur');
     feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
+    const colorScale = d3.scaleSequentialLog().interpolator(t => d3.interpolateInferno(0.15 + t * 0.85));
+
+    const mapG = svg.append('g');
+    const zoom = d3.zoom().scaleExtent([1, 8]).on('zoom', (event) => mapG.attr('transform', event.transform));
+    svg.call(zoom);
+    // Override D3's default dblclick-to-zoom with a reset:
+    svg.on('dblclick.zoom', () => svg.transition().duration(600).call(zoom.transform, d3.zoomIdentity));
+
     // Ocean sphere — fills the Natural Earth boundary with a proper ocean colour
-    svg.append('path')
+    mapG.append('path')
       .datum({ type: 'Sphere' })
       .attr('fill', '#0a1428')
       .attr('stroke', '#162040')
@@ -307,15 +315,13 @@
       .attr('d', pathGen);
 
     // Graticule grid
-    svg.append('path')
+    mapG.append('path')
       .datum(d3.geoGraticule()())
       .attr('fill', 'none')
       .attr('stroke', '#191928')
       .attr('stroke-width', 0.4)
       .attr('stroke-dasharray', '2,3')
       .attr('d', pathGen);
-
-    const colorScale = d3.scaleSequentialLog().interpolator(t => d3.interpolateInferno(0.15 + t * 0.85));
 
     // Load world topology + country metadata in parallel
     Promise.all([
@@ -327,7 +333,7 @@
 
       const features = topojson.feature(world, world.objects.countries).features;
 
-      countryPaths = svg.selectAll('.country')
+      countryPaths = mapG.selectAll('.country')
         .data(features)
         .join('path')
         .attr('class', 'country')
@@ -379,7 +385,7 @@
             .catch(() => {});
 
       // Country borders overlay
-      svg.append('path')
+      mapG.append('path')
         .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
         .attr('fill', 'none')
         .attr('stroke', '#2e2e52')
