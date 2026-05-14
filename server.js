@@ -21,7 +21,7 @@ for (const c of countries) {
 }
 
 // In-memory state
-const state = { mentions: {}, headlines: [], lastUpdated: null };
+const state = { mentions: {}, headlines: [], countryHeadlines: {}, lastUpdated: null };
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'newslocator-internal';
 
@@ -30,9 +30,10 @@ app.post('/internal/update', (req, res) => {
   if (req.headers['x-internal-secret'] !== INTERNAL_SECRET) {
     return res.status(403).end();
   }
-  const { mentions, headlines } = req.body;
+  const { mentions, headlines, countryHeadlines } = req.body;
   state.mentions = mentions || {};
   state.headlines = headlines || [];
+  state.countryHeadlines = countryHeadlines || {};
   state.lastUpdated = new Date().toISOString();
   io.emit('newsUpdate', state);
   res.json({ ok: true });

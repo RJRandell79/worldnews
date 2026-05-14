@@ -83,17 +83,28 @@ function deduplicateByUrl(articles) {
   });
 }
 
-function extractMentions(articles) {
+function extractMentionsAndHeadlines(articles) {
   const mentions = {};
+  const countryHeadlines = {};
+
   for (const article of articles) {
     const text = `${article.title ?? ''} ${article.description ?? ''}`;
     for (const { iso2, patterns } of index) {
       if (patterns.some(p => p.test(text))) {
         mentions[iso2] = (mentions[iso2] ?? 0) + 1;
+        if (!countryHeadlines[iso2]) countryHeadlines[iso2] = [];
+        if (countryHeadlines[iso2].length < 8) {
+          countryHeadlines[iso2].push({
+            title:       article.title,
+            url:         article.url,
+            source:      article.source,
+            publishedAt: article.publishedAt,
+          });
+        }
       }
     }
   }
-  return mentions;
+  return { mentions, countryHeadlines };
 }
 
 async function postUpdate(data, retries = 4) {
@@ -120,8 +131,10 @@ async function run() {
       fetchRssFeeds(),
     ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : []));
 
-    const articles = deduplicateByUrl([...newsApiArticles, ...rssArticles]);
-    const mentions = extractMentions(articles);
+    const articles = deduplicateByUrl([...newsApiArticles, ...rssArticles])
+      .sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+
+    const { mentions, countryHeadlines } = extractMentionsAndHeadlines(articles);
     const headlines = articles.slice(0, 25).map(a => ({
       title:       a.title,
       url:         a.url,
@@ -129,7 +142,7 @@ async function run() {
       publishedAt: a.publishedAt,
     }));
 
-    await postUpdate({ mentions, headlines });
+    await postUpdate({ mentions, headlines, countryHeadlines });
     console.log(`[monitor] Done — ${articles.length} articles, ${Object.keys(mentions).length} countries`);
   } catch (err) {
     console.error('[monitor] Error:', err.message);
