@@ -463,14 +463,6 @@
         </svg>`;
     }
 
-    function updateHeadlines(headlines) {
-      if (!headlines?.length) return;
-      document.getElementById('headlines').innerHTML = headlines.map(h => `
-        <li><a href="${safeUrl(h.url)}" target="_blank" rel="noopener noreferrer">
-          <span class="src">${esc(h.source || 'News')}</span>${esc(h.title)}
-        </a></li>`).join('');
-    }
-
     function selectCountry(iso2) {
         selectedCountry = iso2;
 
