@@ -346,15 +346,23 @@
           const breakdown = Object.entries(sources)
             .sort(([, a], [, b]) => b - a)
             .slice(0, 5)
-            .map(([src, n]) => `<span>${esc(src)} ×${n}</span>`)
+            .map(([src, n]) => `<span>${esc(src)} &times;${n}</span>`)
             .join('');
             
           sourcesEl.innerHTML = breakdown;
           tooltip.style.display = 'block';
         })
         .on('mousemove', (event) => {
-          tooltip.style.left = (event.clientX + 14) + 'px';
-          tooltip.style.top  = (event.clientY - 36) + 'px';
+            const pad = 14;
+            const tw  = tooltip.offsetWidth;
+            const th  = tooltip.offsetHeight;
+            let x = event.clientX + pad;
+            let y = event.clientY - 36;
+            if (x + tw > window.innerWidth) x = event.clientX - tw - pad;
+            if (y < 0) y = event.clientY + pad;
+            if (y + th > window.innerHeight) y = window.innerHeight - th - pad;
+            tooltip.style.left = x + 'px';
+            tooltip.style.top  = y + 'px';
         })
         .on('mouseout', () => { tooltip.style.display = 'none'; })
 
