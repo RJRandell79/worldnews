@@ -147,6 +147,7 @@
       text-transform: uppercase;
       margin-bottom: 2px;
     }
+    #headlines .hl-flags { font-style: normal; letter-spacing: 1px; opacity: 0.75; }
 
     .country.selected { stroke: #fff !important; stroke-width: 1.5px !important; }
 
@@ -515,10 +516,12 @@
             `<li style="padding:16px;color:#444;font-size:.8rem">${emptyMsg || 'No headlines'}</li>`;
             return;
         }
-        document.getElementById('headlines').innerHTML = headlines.map(h => `
-            <li><a href="${safeUrl(h.url)}" target="_blank" rel="noopener noreferrer">
-            <span class="src">${esc(h.source || 'News')}</span>${esc(h.title)}
-            </a></li>`).join('');
+        document.getElementById('headlines').innerHTML = headlines.map(h => {
+            const flags = (h.countries || []).map(iso2 => flag(iso2)).join('');
+            return `<li><a href="${safeUrl(h.url)}" target="_blank" rel="noopener noreferrer">
+                <span class="src">${esc(h.source || 'News')}${flags ? ` <span class="hl-flags">${flags}</span>` : ''}</span>${esc(h.title)}
+                </a></li>`;
+        }).join('');
     }
 
     // — Socket.io —

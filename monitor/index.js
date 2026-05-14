@@ -91,12 +91,19 @@ function extractMentionsAndHeadlines(articles) {
   const mentions = {};
   const countryHeadlines = {};
   const countrySources = {};
+  const articleCountries = {};
 
   for (const article of articles) {
     const text = `${article.title ?? ''} ${article.description ?? ''}`;
     for (const { iso2, patterns } of index) {
       if (patterns.some(p => p.test(text))) {
         mentions[iso2] = (mentions[iso2] ?? 0) + 1;
+
+        if (article.url) {
+          if (!articleCountries[article.url]) articleCountries[article.url] = [];
+          if (!articleCountries[article.url].includes(iso2))
+            articleCountries[article.url].push(iso2);
+        }
 
         if (article.source) {
           if (!countrySources[iso2]) countrySources[iso2] = {};
@@ -115,7 +122,7 @@ function extractMentionsAndHeadlines(articles) {
       }
     }
   }
-  return { mentions, countryHeadlines, countrySources };
+  return { mentions, countryHeadlines, countrySources, articleCountries };
 }
 
 async function postUpdate(data, retries = 4) {
@@ -145,12 +152,13 @@ async function run() {
     const articles = deduplicateByUrl([...newsApiArticles, ...rssArticles])
       .sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
 
-    const { mentions, countryHeadlines, countrySources } = extractMentionsAndHeadlines(articles);
+    const { mentions, countryHeadlines, countrySources, articleCountries } = extractMentionsAndHeadlines(articles);
     const headlines = articles.slice(0, 25).map(a => ({
       title:       a.title,
       url:         a.url,
       source:      a.source,
       publishedAt: a.publishedAt,
+      countries:    (articleCountries[a.url] || []).slice(0, 3), // For top headlines, include up to 3 mentioned countries
     }));
 
     await postUpdate({ mentions, headlines, countryHeadlines, countrySources });
