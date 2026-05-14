@@ -374,7 +374,7 @@
       svg.append('path')
         .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
         .attr('fill', 'none')
-        .attr('stroke', '#1e1e3a')
+        .attr('stroke', '#2e2e52')
         .attr('stroke-width', 0.4)
         .attr('d', pathGen);
 
@@ -404,7 +404,7 @@
         const count = (iso2 && mentions[iso2]) || 0;
         return count > 0 ? colorScale(count) : '#252535';
       });
-      
+
       countryPaths.attr('filter', d => {
         if (d.id === 10) return null;
         const iso2  = numericToAlpha2[String(d.id)];
