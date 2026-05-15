@@ -87,7 +87,7 @@
 
     #legend {
       position: absolute;
-      bottom: 16px;
+      bottom: 38px;
       left: 16px;
       background: rgba(20, 20, 40, 0.88);
       border: 1px solid #2a2a4a;
@@ -98,6 +98,48 @@
     #legend p { text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 6px; }
     #legend-bar { width: 140px; height: 8px; border-radius: 4px; display: block; }
     #legend-labels { display: flex; justify-content: space-between; color: #666; margin-top: 4px; }
+
+    /* Ticker */
+    #ticker {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 30px;
+      background: rgba(8, 8, 24, 0.92);
+      border-top: 1px solid #1e1e38;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      z-index: 10;
+      pointer-events: none;
+    }
+    #ticker-label {
+      flex-shrink: 0;
+      background: #ff6b35;
+      color: #fff;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 0 10px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+    }
+    #ticker-track {
+      flex: 1;
+      overflow: hidden;
+      height: 100%;
+      position: relative;
+    }
+    #ticker-content {
+      position: absolute;
+      top: 0; bottom: 0; left: 0;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      font-size: 0.73rem;
+      color: #b0b0c8;
+      will-change: transform;
+    }
 
     /* Sidebar */
     aside {
@@ -259,6 +301,12 @@
         <canvas id="legend-bar" width="140" height="8"></canvas>
         <div id="legend-labels"><span>0</span><span id="legend-max">—</span></div>
       </div>
+      <div id="ticker">
+        <span id="ticker-label">LIVE</span>
+        <div id="ticker-track">
+          <span id="ticker-content"></span>
+        </div>
+      </div>
     </div>
     <aside>
       <div class="sh">Top Countries</div>
@@ -310,7 +358,10 @@
     let spherePath, graticulePath, bordersPath, atmospherePath;
     let lastUpdatedMs = null;
     let countdownInterval = null;
+    let tickerPos  = 0;
+    let tickerRaf  = null;
 
+    const TICKER_SPEED   = 1.6 // pixels per frame at 60fps
     const tooltip        = document.getElementById('tooltip');
     const statusEl       = document.getElementById('status');
     const mapDiv         = document.getElementById('map-container');
@@ -642,6 +693,22 @@
       el.textContent = remaining === 0 ? 'soon' : `${mm}:${ss}`;
     }
 
+    function updateTicker(headlines) {
+      if (!headlines?.length) return;
+      const content = document.getElementById('ticker-content');
+      const track   = document.getElementById('ticker-track');
+      if (!content || !track) return;
+      content.textContent = headlines.slice(0, 8).map(h => h.title).join('   ·   ') + '   ·   ';
+      tickerPos = track.offsetWidth; // start just off the right edge
+      if (tickerRaf) cancelAnimationFrame(tickerRaf);
+      (function tick() {
+          tickerPos -= TICKER_SPEED;
+          if (tickerPos < -content.offsetWidth) tickerPos = track.offsetWidth;
+          content.style.transform = `translateX(${tickerPos}px)`;
+          tickerRaf = requestAnimationFrame(tick);
+      })();
+    }
+
     function selectCountry(iso2) {
         selectedCountry = iso2;
 
@@ -706,6 +773,7 @@
         updateTopCountries(currentMentions);
         flashChangedCountries(prevMentions, currentMentions);
         updateStatsBar(totalArticles);
+        updateTicker(allHeadlines);
 
         // Re-apply filter if one is active, otherwise show all
         if (selectedCountry) selectCountry(selectedCountry);
