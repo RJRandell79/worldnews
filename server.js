@@ -16,9 +16,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Build lookup tables from countries data
 const numericToAlpha2 = {};
 const countryNames = {};
+const countryRegions = {};
 for (const c of countries) {
   numericToAlpha2[String(parseInt(c.iso3n, 10))] = c.iso2;
   countryNames[c.iso2] = c.name;
+  if (c.region) countryRegions[c.iso2] = c.region;
 }
 
 // Load latest snapshot from DB or start with empty state
@@ -48,7 +50,7 @@ app.post('/internal/update', (req, res) => {
 // Public endpoints
 app.get('/api/history', (_req, res) => res.json(db.getMentionHistory()));
 app.get('/api/state', (_req, res) => res.json(state));
-app.get('/api/countries', (_req, res) => res.json({ numericToAlpha2, countryNames }));
+app.get('/api/countries', (_req, res) => res.json({ numericToAlpha2, countryNames, countryRegions }));
 
 io.on('connection', (socket) => {
   socket.emit('newsUpdate', state);
