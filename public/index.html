@@ -278,7 +278,7 @@
     let currentCountryHeadlines = {};
     let allHeadlines = [];
     let currentCountrySources = {};
-    let spherePath, graticulePath, bordersPath;
+    let spherePath, graticulePath, bordersPath, atmospherePath;
 
     const tooltip        = document.getElementById('tooltip');
     const statusEl       = document.getElementById('status');
@@ -313,6 +313,14 @@
     const feMerge = glowFilter.append('feMerge');
     feMerge.append('feMergeNode').attr('in', 'coloredBlur');
     feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+    defs.append('filter')
+      .attr('id', 'atmosphere')
+      .attr('x', '-25%').attr('y', '-25%')
+      .attr('width', '150%').attr('height', '150%')
+      .append('feGaussianBlur')
+      .attr('in', 'SourceGraphic')
+      .attr('stdDeviation', '12');
 
     const colorScale = d3.scaleSequentialLog().interpolator(t => d3.interpolateInferno(0.15 + t * 0.85));
 
@@ -358,6 +366,16 @@
       projection.rotate([0, -20, 0]).scale(currentScale);
       redrawMap();
     });
+
+    atmospherePath = mapG.append('path')
+      .datum({ type: 'Sphere' })
+      .attr('fill', '#2255dd')
+      .attr('fill-opacity', 0.18)
+      .attr('stroke', '#4488ff')
+      .attr('stroke-width', 3)
+      .attr('stroke-opacity', 0.25)
+      .attr('filter', 'url(#atmosphere)')
+      .attr('d', pathGen);
 
     // Ocean sphere — fills the Natural Earth boundary with a proper ocean colour
     spherePath = mapG.append('path')
@@ -460,6 +478,7 @@
     }).catch(err => console.error('Map load error:', err));
 
     function redrawMap() {
+      if (atmospherePath) atmospherePath.attr('d', pathGen);
       if (spherePath)    spherePath.attr('d', pathGen);
       if (graticulePath) graticulePath.attr('d', pathGen);
       if (countryPaths)  countryPaths.attr('d', pathGen);
