@@ -23,7 +23,7 @@ for (const c of countries) {
 
 // Load latest snapshot from DB or start with empty state
 const savedState = db.getLatestSnapshot();
-const state = savedState || { mentions: {}, headlines: [], countryHeadlines: {}, countrySources: {}, lastUpdated: null };
+const state = savedState || { mentions: {}, headlines: [], countryHeadlines: {}, countrySources: {}, lastUpdated: null, totalArticles: 0 };
 if (savedState) console.log(`[server] Restored state from DB (${savedState.lastUpdated})`);
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'newslocator-internal';
@@ -33,11 +33,12 @@ app.post('/internal/update', (req, res) => {
   if (req.headers['x-internal-secret'] !== INTERNAL_SECRET) {
     return res.status(403).end();
   }
-  const { mentions, headlines, countryHeadlines, countrySources } = req.body;
+  const { mentions, headlines, countryHeadlines, countrySources, totalArticles } = req.body;
   state.mentions = mentions || {};
   state.headlines = headlines || [];
   state.countryHeadlines = countryHeadlines || {};
   state.countrySources = countrySources || {};
+  state.totalArticles = totalArticles || 0;
   state.lastUpdated = new Date().toISOString();
   db.saveSnapshot(state);
   io.emit('newsUpdate', state);

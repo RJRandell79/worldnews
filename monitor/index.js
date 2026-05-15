@@ -161,7 +161,7 @@ async function run() {
       countries:    (articleCountries[a.url] || []).slice(0, 3), // For top headlines, include up to 3 mentioned countries
     }));
 
-    await postUpdate({ mentions, headlines, countryHeadlines, countrySources });
+    await postUpdate({ mentions, headlines, countryHeadlines, countrySources, totalArticles: articles.length });
     console.log(`[monitor] Done — ${articles.length} articles, ${Object.keys(mentions).length} countries`);
   } catch (err) {
     console.error('[monitor] Error:', err.message);
