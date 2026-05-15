@@ -36,19 +36,20 @@
 
     #stats-bar {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
-      height: 28px;
+      align-items: stretch;
+      justify-content: space-between;
+      gap: 1rem;
+      height: auto;
       padding: 0 24px;
       background: #0e0e20;
       border-bottom: 1px solid #1a1a30;
-      font-size: 0.7rem;
+      font-size: 1.25rem;
       color: #444;
       flex-shrink: 0;
       letter-spacing: 0.3px;
     }
-    #stats-bar .stat-sep  { margin: 0 14px; color: #222; }
+    #stats-bar .stat-item { display: flex; flex: 1; flex-direction: column; justify-content: flex-start; gap: 4px; padding: 16px 0; border-right: 1px solid #1a1a30; }
+    #stats-bar .stat-item:last-child { border-right: none; }
     #stats-bar .stat-val  { color: #aaa; font-weight: 600; }
     #stat-countdown .stat-val { color: #ff6b35; }
 
@@ -281,15 +282,13 @@
     <h1>News<span>Locator</span></h1>
     <span id="status">Connecting&hellip;</span>
   </header>
-  <div id="stats-bar">
-    <span class="stat-item"><span class="stat-val" id="stat-articles">&dash;</span> articles</span>
-    <span class="stat-sep">·</span>
-    <span class="stat-item"><span class="stat-val" id="stat-countries">&dash;</span> countries</span>
-    <span class="stat-sep">·</span>
-    <span class="stat-item" id="stat-countdown">Next update <span class="stat-val" id="stat-countdown-val">&dash;</span></span>
-  </div>
   <main>
     <div id="map-container">
+      <div id="stats-bar">
+        <span class="stat-item"><span class="stat-val" id="stat-articles">&dash;</span> articles</span>
+        <span class="stat-item"><span class="stat-val" id="stat-countries">&dash;</span> countries</span>
+        <span class="stat-item" id="stat-countdown"><span class="stat-val" id="stat-countdown-val">&dash;</span> to next update </span>
+      </div>
       <div id="map"></div>
       <div id="tooltip">
         <strong></strong>
