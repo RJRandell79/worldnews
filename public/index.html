@@ -237,6 +237,31 @@
     .cat-legal    { background: #1a2510; color: #a3e635; }
     .cat-sport    { background: #0a2a1a; color: #86efac; }
 
+    #cat-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 8px 12px;
+      border-bottom: 1px solid #1e1e38;
+      flex-shrink: 0;
+    }
+    #cat-filters:empty { padding: 0; border-bottom: none; }
+    #cat-filters button {
+      background: none;
+      border: 1px solid #2a2a4a;
+      border-radius: 3px;
+      color: #555;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 3px 7px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    #cat-filters button:hover { border-color: #666; color: #999; }
+    #cat-filters button.active { border-color: transparent; background: #2a2a4a; color: #ccc; }
+
     @keyframes flash-change {
         0%   { stroke: #ff9944; stroke-width: 2.5px; }
         100% { stroke: #2e2e52; stroke-width: 0.4px; }
@@ -338,6 +363,7 @@
         <span id="headlines-title">Latest Headlines</span>
         <button id="clear-filter" title="Show all headlines">&times; Clear</button>
       </div>
+      <div id="cat-filters"></div>
       <div id="headlines-wrap">
         <ul id="headlines"><li style="padding:16px;color:#444;font-size:.8rem">Waiting for data&hellip;</li></ul>
       </div>
@@ -349,6 +375,10 @@
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
   <script>
     'use strict';
+
+    const CAT_COLORS = {
+      conflict: ['#3a1010','#f87171'], politics: ['#0d2540','#60a5fa'], economy: ['#0a2818','#4ade80'], disaster: ['#3a1e00','#fb923c'], health: ['#082a28','#34d399'], crime: ['#260f3a','#c084fc'], weather: ['#0d2235','#7dd3fc'], science: ['#1a1040','#a78bfa'], space:    ['#0a0a28','#e879f9'], legal: ['#1a2510','#a3e635'], sport: ['#0a2a1a','#86efac']
+    };
 
     let mentionHistory = []; // [{capturedAt, mentions}]
 
@@ -388,6 +418,7 @@
     let tickerPos  = 0;
     let tickerRaf  = null;
     let lastTotalArticles = 0;
+    let selectedCategory = null;
 
     const TICKER_SPEED   = 1.6 // pixels per frame at 60fps
     const tooltip        = document.getElementById('tooltip');
@@ -743,12 +774,48 @@
       })();
     }
 
+    function getActiveHeadlines() {
+      let hl = selectedCountry ? (currentCountryHeadlines[selectedCountry] || []) : allHeadlines;
+      if (selectedCategory) hl = hl.filter(h => h.category === selectedCategory);
+      return hl;
+    }
+
+    function updateCategoryFilters(sourceHeadlines) {
+      const container = document.getElementById('cat-filters');
+      if (!container) return;
+      const counts = {};
+      for (const h of sourceHeadlines) {
+        if (h.category) counts[h.category] = (counts[h.category] || 0) + 1;
+      }
+      // If selected category has disappeared from current data, clear it
+      if (selectedCategory && !counts[selectedCategory]) selectedCategory = null;
+
+      const cats = Object.keys(counts).sort();
+      const allBtn = `<button class="cat-filter-btn${!selectedCategory ? ' active' : ''}" data-cat="">All</button>`;
+      container.innerHTML = allBtn + cats.map(cat => {
+        const isActive = selectedCategory === cat;
+        const style = isActive && CAT_COLORS[cat]
+          ? ` style="background:${CAT_COLORS[cat][0]};color:${CAT_COLORS[cat][1]};border-color:transparent"`
+          : '';
+        return `<button class="cat-filter-btn${isActive ? ' active' : ''}" data-cat="${cat}"${style}>${cat}</button>`;
+      }).join('');
+
+      container.querySelectorAll('.cat-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cat = btn.dataset.cat;
+          selectedCategory = cat ? (selectedCategory === cat ? null : cat) : null;
+          const src = selectedCountry ? (currentCountryHeadlines[selectedCountry] || []) : allHeadlines;
+          updateCategoryFilters(src);
+          renderHeadlines(getActiveHeadlines());
+        });
+      });
+    }
+
     function selectCountry(iso2) {
         selectedCountry = iso2;
 
         // Update map highlight
-        countryPaths
-            .classed('selected', d => numericToAlpha2[String(d.id)] === iso2);
+        countryPaths.classed('selected', d => numericToAlpha2[String(d.id)] === iso2);
 
         // Update sidebar
         const name = countryNames[iso2] || iso2;
@@ -756,10 +823,10 @@
         clearBtn.style.display = 'inline';
 
         const articles = currentCountryHeadlines[iso2] || [];
-        renderHeadlines(
-            articles.length ? articles : null,
-            articles.length ? null : `No headlines found for ${name}`
-        );
+
+        const source = currentCountryHeadlines[iso2] || [];
+        updateCategoryFilters(source);
+        renderHeadlines(getActiveHeadlines());
     }
 
     function clearFilter() {
@@ -767,7 +834,8 @@
         countryPaths?.classed('selected', false);
         headlinesTitle.textContent = 'Latest Headlines';
         clearBtn.style.display = 'none';
-        renderHeadlines(allHeadlines);
+        updateCategoryFilters(allHeadlines);
+        renderHeadlines(getActiveHeadlines());
     }
 
     function renderHeadlines(headlines, emptyMsg) {
@@ -811,8 +879,10 @@
         updateTicker(allHeadlines);
 
         // Re-apply filter if one is active, otherwise show all
+        const filterSource = selectedCountry ? (currentCountryHeadlines[selectedCountry] || []) : allHeadlines;
+        updateCategoryFilters(filterSource);
         if (selectedCountry) selectCountry(selectedCountry);
-        else renderHeadlines(allHeadlines);
+        else renderHeadlines(getActiveHeadlines());
 
         if (lastUpdated) {
             lastUpdatedMs = new Date(lastUpdated).getTime();
