@@ -120,6 +120,10 @@
     #top-countries .bar-wrap { width: 50px; background: #1e1e38; border-radius: 2px; height: 4px; }
     #top-countries .bar-fill { height: 4px; background: #ff6b35; border-radius: 2px; transition: width .5s; }
     #top-countries .cnt { color: #ff6b35; font-weight: 700; width: 24px; text-align: right; font-size: 0.8rem; }
+    #top-countries .trend { font-size: 0.65rem; margin-left: 2px; flex-shrink: 0; }
+    #top-countries .trend-up   { color: #4caf50; }
+    #top-countries .trend-down { color: #f44336; }
+    #top-countries .trend-new  { color: #ff9800; font-size: 0.6rem; background: #1a1200; border-radius: 2px; padding: 0 3px; letter-spacing: 0; }
 
     #headlines-wrap { flex: 1; overflow-y: auto; }
     #headlines-wrap::-webkit-scrollbar { width: 4px; }
@@ -215,7 +219,7 @@
 <body>
   <header>
     <h1>News<span>Locator</span></h1>
-    <span id="status">Connecting…</span>
+    <span id="status">Connecting&hellip;</span>
   </header>
   <main>
     <div id="map-container">
@@ -559,14 +563,14 @@
             ? sorted.map(([iso2, count], i) => `
                 <li>
                 <span class="rank">${i + 1}</span>
-                <span class="cname">${flag(iso2)} ${esc(countryNames[iso2] || iso2)}</span>
+                <span class="cname">${flag(iso2)} ${esc(countryNames[iso2] || iso2)} ${trendIndicator(iso2, count)}</span>
                 ${sparkline(iso2, maxCount)}
                 <span class="cnt">${count}</span>
                 </li>`).join('')
             : '<li style="padding:8px 16px;color:#444;font-size:.8rem">No data yet</li>';
         }
 
-        function sparkline(iso2, globalMax) {
+    function sparkline(iso2, globalMax) {
         if (mentionHistory.length < 2) {
             // Fall back to static bar if no history yet
             const count = currentMentions[iso2] || 0;
@@ -583,6 +587,17 @@
             <polyline points="${points}" fill="none" stroke="#ff6b35" stroke-width="1.5"
             stroke-linejoin="round" stroke-linecap="round" opacity="0.8"/>
         </svg>`;
+    }
+
+    function trendIndicator(iso2, currentCount) {
+      if (!mentionHistory.length) return '';
+
+      const prev = mentionHistory[mentionHistory.length - 1]?.mentions?.[iso2] ?? null;
+      if (prev === null) return '<span class="trend trend-new">new</span>';
+      if (currentCount > prev) return '<span class="trend trend-up">↑</span>';
+      if (currentCount < prev) return '<span class="trend trend-down">↓</span>';
+
+      return '';
     }
 
     function selectCountry(iso2) {
