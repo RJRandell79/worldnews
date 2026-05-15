@@ -41,7 +41,8 @@ const RSS_FEEDS = [
   { name: 'ABC News Australia', url: 'https://www.abc.net.au/news/feed/51120/rss.xml' },
   { name: 'CBC World', url: 'https://www.cbc.ca/cmlink/rss-world' },
   { name: 'Times of India', url: 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms' },
-  { name: 'Xinhua', url: 'http://www.xinhuanet.com/english/rss/worldrss.xml' }
+  { name: 'Xinhua', url: 'http://www.xinhuanet.com/english/rss/worldrss.xml' },
+  { name: 'AP', url: 'https://feedx.net/rss/ap.xml' },
 ];
 
 // Build regex patterns: [{iso2, patterns[]}]
