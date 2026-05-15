@@ -203,6 +203,9 @@
         white-space: nowrap;
     }
 
+    #map-container svg { cursor: grab; }
+    #map-container svg:active { cursor: grabbing; }
+
     @media (max-width: 768px) {
       main { flex-direction: column; }
       aside { width: 100%; height: 280px; border-left: none; border-top: 1px solid #2a2a4a; }
@@ -275,6 +278,7 @@
     let currentCountryHeadlines = {};
     let allHeadlines = [];
     let currentCountrySources = {};
+    let spherePath, graticulePath, bordersPath;
 
     const tooltip        = document.getElementById('tooltip');
     const statusEl       = document.getElementById('status');
@@ -293,9 +297,8 @@
       .style('width', '100%')
       .style('height', '100%');
 
-    const projection = d3.geoNaturalEarth1()
-      .scale(W / 6.3)
-      .translate([W / 2, H / 2]);
+    const baseScale  = Math.min(W, H) / 2.1;
+    const projection = d3.geoOrthographic().scale(baseScale).translate([W / 2, H / 2]).clipAngle(90); // hides the back hemisphere
 
     const pathGen = d3.geoPath().projection(projection);
 
@@ -314,13 +317,50 @@
     const colorScale = d3.scaleSequentialLog().interpolator(t => d3.interpolateInferno(0.15 + t * 0.85));
 
     const mapG = svg.append('g');
-    const zoom = d3.zoom().scaleExtent([1, 8]).on('zoom', (event) => mapG.attr('transform', event.transform));
-    svg.call(zoom);
-    // Override D3's default dblclick-to-zoom with a reset:
-    svg.on('dblclick.zoom', () => svg.transition().duration(600).call(zoom.transform, d3.zoomIdentity));
+    let currentScale  = baseScale;
+    let autoRestartId = null;
+
+    // Wheel → zoom (updates projection scale, not a CSS transform)
+    svg.on('wheel', (event) => {
+      event.preventDefault();
+      stopAutoRotate();
+      clearTimeout(autoRestartId);
+      autoRestartId = setTimeout(startAutoRotate, 3000);
+      currentScale = Math.max(baseScale * 0.8, Math.min(baseScale * 4, currentScale * (event.deltaY < 0 ? 1.1 : 0.9)));
+      projection.scale(currentScale);
+      redrawMap();
+    }, { passive: false });
+
+    // Drag → rotate
+    let dragStart, rotateStart;
+    svg.call(d3.drag()
+      .on('start', (event) => {
+        stopAutoRotate();
+        dragStart   = [event.x, event.y];
+        rotateStart = projection.rotate();
+      })
+      .on('drag', (event) => {
+        const dx = event.x - dragStart[0];
+        const dy = event.y - dragStart[1];
+        const [λ, φ, γ] = rotateStart;
+        projection.rotate([λ + dx * 90 / currentScale, Math.max(-90, Math.min(90, φ - dy * 90 / currentScale)), γ]);
+        redrawMap();
+      })
+      .on('end', () => {
+        clearTimeout(autoRestartId);
+        autoRestartId = setTimeout(startAutoRotate, 3000);
+      })
+    );
+
+    // Double-click → reset
+    svg.on('dblclick', () => {
+      currentScale = baseScale;
+      projection.rotate([0, -20, 0]).scale(currentScale);
+      redrawMap();
+    });
 
     // Ocean sphere — fills the Natural Earth boundary with a proper ocean colour
-    mapG.append('path')
+    spherePath = mapG.append('path')
       .datum({ type: 'Sphere' })
       .attr('fill', '#0a1428')
       .attr('stroke', '#162040')
@@ -328,7 +368,7 @@
       .attr('d', pathGen);
 
     // Graticule grid
-    mapG.append('path')
+    graticulePath = mapG.append('path')
       .datum(d3.geoGraticule()())
       .attr('fill', 'none')
       .attr('stroke', '#191928')
@@ -398,7 +438,7 @@
             .catch(() => {});
 
       // Country borders overlay
-      mapG.append('path')
+      bordersPath = mapG.append('path')
         .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
         .attr('fill', 'none')
         .attr('stroke', '#2e2e52')
@@ -415,8 +455,29 @@
       if (Object.keys(currentMentions).length) {
         applyMentions(currentMentions);
         updateTopCountries(currentMentions);
+        startAutoRotate();
     }
     }).catch(err => console.error('Map load error:', err));
+
+    function redrawMap() {
+      if (spherePath)    spherePath.attr('d', pathGen);
+      if (graticulePath) graticulePath.attr('d', pathGen);
+      if (countryPaths)  countryPaths.attr('d', pathGen);
+      if (bordersPath)   bordersPath.attr('d', pathGen);
+    }
+
+    let autoTimer = null;
+    function startAutoRotate() {
+      if (autoTimer) return;
+      autoTimer = d3.timer(() => {
+        const [λ, φ, γ] = projection.rotate();
+        projection.rotate([λ + 0.15, φ, γ]); // ~9°/sec at 60fps
+        redrawMap();
+      });
+    }
+    function stopAutoRotate() {
+      if (autoTimer) { autoTimer.stop(); autoTimer = null; }
+    }
 
     function applyMentions(mentions) {
       if (!countryPaths) { currentMentions = mentions; return; }
