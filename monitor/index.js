@@ -9,6 +9,20 @@ const SECRET     = process.env.INTERNAL_SECRET || 'newslocator-internal';
 
 const rssParser = new Parser({ timeout: 10000 });
 
+const CATEGORIES = {
+  conflict: ['war','attack','killed','airstrike','military','troops','bomb','missile','fighting','forces','siege','ceasefire','hostage','rebel','coup','drone','casualties','violence','offensive'],
+  politics: ['election','vote','parliament','president','minister','government','treaty','diplomacy','sanctions','protest','summit','opposition','prime minister','resign','senate','congress'],
+  economy: ['economy','trade','inflation','oil','gas','market','bank','debt','investment','tariff','recession','currency','stock','unemployment','budget','gdp','economic growth','interest rate','wage','supply chain','commerce','economics','exports','imports'],
+  disaster: ['earthquake','flood','hurricane','typhoon','wildfire','tsunami','volcano','drought','storm','landslide','cyclone','disaster','evacuate'],
+  health: ['virus','pandemic','disease','outbreak','hospital','vaccine','epidemic','covid','infection','health','medical'],
+  crime: ['arrested','trial','convicted','sentenced','murder','fraud','corruption','trafficking','terrorism','suspect','charged','court','prison','criminal','indictment','extradited','gang','cartel','robbery','shooter','gunman'],
+  weather: ['heatwave','temperature','snow','frost','blizzard','rainfall','flooding','climate','forecast','cold snap','humidity','monsoon','ice storm','hail','drought warning'],
+  science: ['research','study','scientists','discovery','species','fossil','genome','laboratory','experiment','findings','breakthrough','physics','biology','archaeology','genetics','quantum'],
+  space: ['nasa','spacex','rocket','satellite','orbit','astronaut','moon','mars','planet','telescope','launch','iss','galaxy','spacecraft','asteroid','cosmos','solar','webb','asteroid'],
+  legal: ['ruling','verdict','lawsuit','appeal','prosecution','judge','jury','indicted','pleaded','settlement','injunction','tribunal','hearing','testimony','acquitted','bail','litigation','supreme court','appeals court','court of appeal'],
+  sport: ['football','soccer','cricket','tennis','rugby','basketball','baseball','athletics','olympics','championship','tournament','league','cup','match','player','team','coach','transfer','fifa','uefa','formula 1','f1','cycling','swimming','boxing','golf', 't20','wimbledon','world cup','super bowl','nba','nfl','mlb','uefa','champions league', 't20i', 'grand slam'],
+};
+
 const RSS_FEEDS = [
   { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
   { name: 'BBC Africa', url: 'https://feeds.bbci.co.uk/news/world/africa/rss.xml' },
@@ -37,6 +51,16 @@ const index = countries.map(({ iso2, name, aliases }) => ({
     term => new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')
   ),
 }));
+
+function categorise(title, description) {
+  const text = `${title ?? ''} ${description ?? ''}`.toLowerCase();
+  let best = null, bestScore = 0;
+  for (const [cat, words] of Object.entries(CATEGORIES)) {
+    const score = words.filter(w => text.includes(w)).length;
+    if (score > bestScore) { bestScore = score; best = cat; }
+  }
+  return best; // null if nothing matched
+}
 
 async function fetchNewsApi() {
   if (!API_KEY) return [];
@@ -117,6 +141,7 @@ function extractMentionsAndHeadlines(articles) {
             url:         article.url,
             source:      article.source,
             publishedAt: article.publishedAt,
+            category:    article.category
           });
         }
       }
@@ -150,7 +175,8 @@ async function run() {
     ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : []));
 
     const articles = deduplicateByUrl([...newsApiArticles, ...rssArticles])
-      .sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+      .sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
+      .map(a => ({ ...a, category: categorise(a.title, a.description) }));
 
     const { mentions, countryHeadlines, countrySources, articleCountries } = extractMentionsAndHeadlines(articles);
     const headlines = articles.slice(0, 25).map(a => ({
@@ -159,6 +185,7 @@ async function run() {
       source:      a.source,
       publishedAt: a.publishedAt,
       countries:    (articleCountries[a.url] || []).slice(0, 3), // For top headlines, include up to 3 mentioned countries
+      category:     a.category
     }));
 
     await postUpdate({ mentions, headlines, countryHeadlines, countrySources, totalArticles: articles.length });

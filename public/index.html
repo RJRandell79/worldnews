@@ -214,6 +214,29 @@
     }
     #headlines .hl-flags { font-style: normal; letter-spacing: 1px; opacity: 0.75; }
 
+    .cat {
+      display: inline-block;
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      border-radius: 2px;
+      padding: 1px 5px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .cat-conflict { background: #3a1010; color: #f87171; }
+    .cat-politics { background: #0d2540; color: #60a5fa; }
+    .cat-economy  { background: #0a2818; color: #4ade80; }
+    .cat-disaster { background: #3a1e00; color: #fb923c; }
+    .cat-health   { background: #082a28; color: #34d399; }
+    .cat-crime    { background: #260f3a; color: #c084fc; }
+    .cat-weather  { background: #0d2235; color: #7dd3fc; }
+    .cat-science  { background: #1a1040; color: #a78bfa; }
+    .cat-space    { background: #0a0a28; color: #e879f9; }
+    .cat-legal    { background: #1a2510; color: #a3e635; }
+    .cat-sport    { background: #0a2a1a; color: #86efac; }
+
     @keyframes flash-change {
         0%   { stroke: #ff9944; stroke-width: 2.5px; }
         100% { stroke: #2e2e52; stroke-width: 0.4px; }
@@ -345,6 +368,9 @@
         if (!iso2 || iso2.length !== 2) return '';
         const u = iso2.toUpperCase();
         return String.fromCodePoint(u.charCodeAt(0) + 0x1F1A5, u.charCodeAt(1) + 0x1F1A5);
+    }
+    function catPill(cat) {
+      return cat ? `<span class="cat cat-${cat}">${cat}</span>` : '';
     }
 
     let countryNames = {};
@@ -753,7 +779,7 @@
         document.getElementById('headlines').innerHTML = headlines.map(h => {
             const flags = (h.countries || []).map(iso2 => flag(iso2)).join('');
             return `<li><a href="${safeUrl(h.url)}" target="_blank" rel="noopener noreferrer">
-                <span class="src">${esc(h.source || 'News')}${flags ? ` <span class="hl-flags">${flags}</span>` : ''}</span>${esc(h.title)}
+                <span class="src">${esc(h.source || 'News')}${flags ? ` <span class="hl-flags">${flags}</span>` : ''}</span>${catPill(h.category)}${esc(h.title)}
                 </a></li>`;
         }).join('');
     }
